@@ -8,14 +8,11 @@ function handle(request, response) {
  
   // //logic begins from here
   let contacts = fakeDatabase.selectAllFromContacts();
-  let tempDeletion = [];
-  Object.keys(urlQueryParam(request)).length === 0
-
   if (urlQueryParam(request) != null && Object.keys(urlQueryParam(request)).length != 0 ) {
     const query = urlQueryParam(request);
 
     // get call for phrase
-    if ( query['phrase'].toString()!= '' ){
+    if ( query['phrase'].toString() != ''  && !('limit' in query)){
       let queryValue = query['phrase'];
       let filteredContacts = contacts.filter(function(a) 
         {
@@ -26,9 +23,9 @@ function handle(request, response) {
       respondWith200OkJson(response,filteredContacts);
     }
     
-
     // get call with phrase and limit
-    if ( query['phrase'].toString()!= '' && 'limit' in query){
+    if ( query['phrase'].toString() != '' && 'limit' in query){
+
       let queryValue = query['phrase'];
       let filteredContact = contacts.filter(function(a)
         {
@@ -40,11 +37,25 @@ function handle(request, response) {
       respondWith200OkJson(response,item);
     }
 
-
     // empty phrase get call
     if (query['phrase'].toString() === '' && 'phrase' in query ){
       respondWith404NotFound(response);
     }
+    return routerHandleResult.HANDLED;
+  }
+
+  // delete request 
+  if (request.method == 'DELETE' && urlPathOf(request) == "/contacts/"+ urlPathOf(request).split('/').pop()){ 
+    const contactId = urlPathOf(request).split('/').pop(); 
+    const contactDetails = contacts.filter(function(a){
+      if (a.id != contactId )
+      {
+        return a;
+      }
+    });
+    contacts = contactDetails;
+    respondWith200OkText(response,"deleted");
+    return routerHandleResult.HANDLED;
   }
 
   // get call against contact id
@@ -60,14 +71,11 @@ function handle(request, response) {
       respondWith404NotFound(response);
     }
     else{
-      const alreadyDeleted = tempDeletion.filter(function(a){
-        const subElement  = a.filter(function(b){
-          console.log("red" + b);
-          if (b.id == contactDetails){
-            return b;
-          }        
-        })
-        return subElement;
+
+      const alreadyDeleted = contacts.filter(function(a){
+        if (a.id == contactDetails){
+          return a;
+        }        
       });    
       if (alreadyDeleted.length != 0){
         respondWith200OkText(response,"already Deleted")
@@ -76,25 +84,15 @@ function handle(request, response) {
         respondWith200OkJson(response,contactDetails);
       }
     } 
-  }
-  // delete request 
-  if (request.method == 'DELETE' && urlPathOf(request) == "/contacts/"+ urlPathOf(request).split('/').pop()){ 
-    const contactId = urlPathOf(request).split('/').pop(); 
-    const contactDetails = contacts.filter(function(a){
-      if (a.id == contactId )
-      {
-        return a;
-      }
-    });
-    tempDeletion.push(contactDetails);
-    respondWith200OkText(response,"deleted");
+    return routerHandleResult.HANDLED;
   }
   // all sorted contacts
-  if (urlPathOf(request) == "/contact"){
+  if (urlPathOf(request) == "/contacts"){
     contacts.sort(sortByName("name"));
     respondWith200OkJson(response,contacts);
+    return routerHandleResult.HANDLED;
   }
-  return routerHandleResult.HANDLED;
+  
 }
   
 function sortByName(name){  
